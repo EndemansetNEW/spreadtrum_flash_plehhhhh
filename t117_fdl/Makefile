@@ -31,7 +31,7 @@ CFLAGS += -DCHIP=$(CHIP)
 ifeq ($(FDL), 2)
 CFLAGS += -DFDL2=1
 endif
-# CFLAGS += -DSDRAM_INIT=0
+CFLAGS += -DSDRAM_INIT=2
 CFLAGS += -DWITH_EFUSE=1
 
 # Clang's LTO doesn't work with the GCC toolchain
