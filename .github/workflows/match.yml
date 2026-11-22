@@ -1,0 +1,30 @@
+name: Build t117_fdl2
+
+on:
+  workflow_dispatch:
+  push:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install ARM GCC toolchain
+        run: choco install gcc-arm-embedded -y
+
+      - name: Build t117_fdl2.bin
+        shell: pwsh
+        run: |
+          $dir = (Get-ChildItem -Recurse -Filter "ums9117_fdl2.ld").DirectoryName
+          cd $dir
+          make FDL=2 TOOLCHAIN=arm-none-eabi
+          python -c "d=open('t117_fdl2.bin','rb').read(); open('t117_fdl2_hdr.bin','wb').write(b'DHTB\x01\x00\x00\x00'+b'\x00'*0x1f8+d)"
+          mkdir $env:GITHUB_WORKSPACE\dist
+          copy t117_fdl2_hdr.bin $env:GITHUB_WORKSPACE\dist\
+
+      - name: Upload t117_fdl2_hdr.bin
+        uses: actions/upload-artifact@v4
+        with:
+          name: t117_fdl2
+          path: dist/t117_fdl2_hdr.bin
