@@ -10,12 +10,8 @@ static inline uint32_t insert_bits(uint32_t orig, unsigned sh, unsigned n, unsig
 static inline void insert_bits_mem(uint32_t addr, unsigned sh, unsigned n, unsigned val) {
 	MEM4(addr) = insert_bits(MEM4(addr), sh, n, val);
 }
-
 static void dmc_print_str(const char *s) {
-	while (*s) {
-		while (MEM4(0x7010000c) & 0xff00);
-		MEM4(0x70100000) = *s++;
-	}
+	(void)s;
 }
 
 static const unsigned ddr_clk_array[] = { 256, 384, 533 };
@@ -71,7 +67,6 @@ static uint32_t dmc_sprd_delay(unsigned n) {
 static void dmc_zq_cal(int target_drv) {
 	uint32_t tmp;
 	unsigned inc, deinc, drvn, drvp;
-	int n;
 
 	tmp = MEM4(0x30000008) & ~(1 << 16);
 	tmp = insert_bits(tmp, 10, 5, target_drv);
@@ -83,8 +78,7 @@ static void dmc_zq_cal(int target_drv) {
 	tmp = MEM4(0x30000008) & ~(1 << 15);
 	tmp = insert_bits(tmp, 0, 5, inc);
 	MEM4(0x30000008) = tmp;
-	n = 10000;
-	while (--n && (MEM4(0x30000008) & 1 << 17)) {
+	while (MEM4(0x30000008) & 1 << 17) {
 		tmp = insert_bits(tmp, 0, 5, ++inc);
 		MEM4(0x30000008) = tmp;
 		dmc_sprd_delay(1);
@@ -93,8 +87,7 @@ static void dmc_zq_cal(int target_drv) {
 	tmp = MEM4(0x30000008) & ~(1 << 15);
 	tmp = insert_bits(tmp, 0, 5, deinc);
 	MEM4(0x30000008) = tmp;
-	n = 10000;
-	while (--n && !(MEM4(0x30000008) & 1 << 17)) {
+	while (!(MEM4(0x30000008) & 1 << 17)) {
 		tmp = insert_bits(tmp, 0, 5, --deinc);
 		MEM4(0x30000008) = tmp;
 		dmc_sprd_delay(1);
@@ -109,8 +102,7 @@ static void dmc_zq_cal(int target_drv) {
 	tmp |= 1 << 15;
 	tmp = insert_bits(tmp, 5, 5, inc);
 	MEM4(0x30000008) = tmp;
-	n = 10000;
-	while (--n && !(MEM4(0x30000008) & 1 << 17)) {
+	while (!(MEM4(0x30000008) & 1 << 17)) {
 		tmp = insert_bits(tmp, 5, 5, ++inc);
 		MEM4(0x30000008) = tmp;
 		dmc_sprd_delay(1);
@@ -119,8 +111,7 @@ static void dmc_zq_cal(int target_drv) {
 	tmp = MEM4(0x30000008) | 1 << 15;
 	tmp = insert_bits(tmp, 5, 5, deinc);
 	MEM4(0x30000008) = tmp;
-	n = 10000;
-	while (--n && (MEM4(0x30000008) & 1 << 17)) {
+	while (MEM4(0x30000008) & 1 << 17) {
 		tmp = insert_bits(tmp, 5, 5, --deinc);
 		MEM4(0x30000008) = tmp;
 		dmc_sprd_delay(1);
@@ -130,15 +121,21 @@ static void dmc_zq_cal(int target_drv) {
 	MEM4(0x30000008) = insert_bits(tmp, 5, 5, drvp);
 	MEM4(0x30000008) |= 1 << 16;
 
+	if (0) {
+		tmp = MEM4(0x30000008);
+		drvn = tmp & 0x1f;
+		drvp = (tmp >> 5) & 0x1f;
+	}
+
+	tmp = MEM4(0x30000390) | 1 << 21;
+	tmp = insert_bits(tmp, 0, 5, drvp);
+	tmp = insert_bits(tmp, 8, 5, drvn);
+	MEM4(0x30000390) = tmp;
+
 	tmp = MEM4(0x30000490) | 1 << 21;
 	tmp = insert_bits(tmp, 0, 5, drvp);
 	tmp = insert_bits(tmp, 8, 5, drvn);
 	MEM4(0x30000490) = tmp;
-
-	tmp = MEM4(0x30000590) | 1 << 21;
-	tmp = insert_bits(tmp, 0, 5, drvp);
-	tmp = insert_bits(tmp, 8, 5, drvn);
-	MEM4(0x30000590) = tmp;
 }
 
 static int search_for_freq_point(const local_timing_t *p, int n, unsigned freq) {
@@ -238,42 +235,35 @@ static void ui_qtr_dly_cnt_init(void) {
 
 static void lpddr_dll_init(int type) {
 	(void)type;
+	MEM4(0x30000308) = 0x80000008;
+	MEM4(0x30000300) = 0x6a22c401;
+
 	MEM4(0x30000408) = 0x80000008;
-	MEM4(0x30000400) = 0x6a228401;
+	MEM4(0x3000040c) = 0x80000006;
+	MEM4(0x30000410) = 0x80000006;
+	MEM4(0x30000400) = 0x6a22c401;
 
 	MEM4(0x30000508) = 0x80000008;
 	MEM4(0x3000050c) = 0x80000006;
 	MEM4(0x30000510) = 0x80000006;
-	MEM4(0x30000500) = 0x6a228401;
-
-	MEM4(0x30000608) = 0x80000008;
-	MEM4(0x3000060c) = 0x80000006;
-	MEM4(0x30000610) = 0x80000006;
-	MEM4(0x30000600) = 0x6a228401;
-
-	MEM4(0x30000708) = 0x80000008;
-	MEM4(0x3000070c) = 0x80000006;
-	MEM4(0x30000710) = 0x80000006;
-	MEM4(0x30000700) = 0x6a228401;
+	MEM4(0x30000500) = 0x6a22c401;
 }
 
 static int dmc_dll_init(int cfg) {
 	uint32_t tmp, b = 0x30000000;
-	int t = 100000;
 
 	lpddr_dll_init(DRAM_LPDDR2);
-	while (--t && !(MEM4(b + 0x404) & MEM4(b + 0x504) & MEM4(b + 0x604) & MEM4(b + 0x704) & 0x10000000));
+	while (!(MEM4(b + 0x304) & MEM4(b + 0x404) & MEM4(b + 0x504) & 0x10000000));
 
-	tmp = MEM4(b + 0x400);
+	tmp = MEM4(b + 0x300);
 	tmp = insert_bits(tmp, 9, 2, 3);
 	tmp = insert_bits(tmp, 12, 1, 1);
 	tmp = insert_bits(tmp, 14, 2, 3);
 	tmp = insert_bits(tmp, 27, 1, 1);
 	tmp = insert_bits(tmp, 0, 7, cfg);
+	MEM4(b + 0x300) = tmp;
 	MEM4(b + 0x400) = tmp;
 	MEM4(b + 0x500) = tmp;
-	MEM4(b + 0x600) = tmp;
-	MEM4(b + 0x700) = tmp;
 	return 0;
 }
 
@@ -320,12 +310,11 @@ static int lpddr_powerup_init(unsigned freq) {
 	MEM4(0x30000108) = tmp << 5 | 3; // 0x43, 0x83, 0xc3
 	MEM4(0x30000104) = 0x81000001;
 	MEM4(0x3000000c) = 0x7fff;
-	int m = 10000;
 	MEM4(0x30000104) = 0x80200000;
-	while (--m && (MEM4(0x30000104) >> 20 & 0x7f));
-	m = 10000;
+	while (MEM4(0x30000104) >> 20 & 0x7f);
 	MEM4(0x30000104) = 0x80200000;
-	while (--m && (MEM4(0x30000104) >> 20 & 0x7f));
+	while (MEM4(0x30000104) >> 20 & 0x7f);
+	return 0;
 }
 
 static void dmc_init_post_setting(unsigned freq) {
@@ -692,6 +681,7 @@ __attribute__((noinline))
 int sdram_init(void) {
 	unsigned ddr_clk = ddr_clk_array[0];
 	uint32_t tmp;
+	(void)tmp;
 
 	MEM4(0x402b0130) = 0;
 
@@ -710,10 +700,12 @@ int sdram_init(void) {
 	dmc_pub_qos_init();
 	dmc_print_str("qos init end\n");
 
+	/*
 	tmp = adi_read(0x40608e30);
 	if (!(tmp & 0x1000) || (tmp & 0x80))
 		if (!(adi_read(0x40608050) & 8))
 			if (ddr_scan_online(ddr_clk)) return -6;
+	*/
 
 	MEM4(0x30000100) |= 0x1000;
 	MEM4(0x402b2230) = 0x400;
@@ -722,4 +714,3 @@ int sdram_init(void) {
 	dmc_print_str("DDR init OK\n");
 	return 0;
 }
-
