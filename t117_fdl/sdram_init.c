@@ -257,7 +257,7 @@ static int dmc_dll_init(int cfg) {
 	uint32_t tmp, b = 0x30000000;
 
 	lpddr_dll_init(DRAM_LPDDR2);
-	while (!(MEM4(b + 0x304) & MEM4(b + 0x404) & MEM4(b + 0x504) & 0x10000000));
+	while (!(MEM4(b + 0x304) & MEM4(b + 0x404) & 0x10000000));
 
 	tmp = MEM4(b + 0x300);
 	tmp = insert_bits(tmp, 9, 2, 3);
