@@ -683,7 +683,7 @@ static int ddr_scan_online(unsigned freq) {
 // hangs when inlined with GCC + LTO
 __attribute__((noinline))
 int sdram_init(void) {
-	unsigned ddr_clk = ddr_clk_array[2];
+	unsigned ddr_clk = ddr_clk_array[0];
 	uint32_t tmp;
 
 	MEM4(0x402b0130) = 0;
