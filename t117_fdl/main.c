@@ -100,6 +100,14 @@ static int read_flash(uint8_t *pkt) {
 		addr += offs;
 	}
 
+	{
+		static int sfc_done = 0;
+		if (!sfc_done) {
+			((int (*)(void))0xffff5741)();
+			sfc_done = 1;
+		}
+	}
+
 	pkt = dl_send_buf();
 	WRITE16_BE(pkt, BSL_REP_READ_FLASH);
 	WRITE16_BE(pkt + 2, size);
