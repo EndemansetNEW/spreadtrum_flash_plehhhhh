@@ -320,11 +320,12 @@ static int lpddr_powerup_init(unsigned freq) {
 	MEM4(0x30000108) = tmp << 5 | 3; // 0x43, 0x83, 0xc3
 	MEM4(0x30000104) = 0x81000001;
 	MEM4(0x3000000c) = 0x7fff;
+	int m = 10000;
 	MEM4(0x30000104) = 0x80200000;
-	while (MEM4(0x30000104) >> 20 & 0x7f);
+	while (--m && (MEM4(0x30000104) >> 20 & 0x7f));
+	m = 10000;
 	MEM4(0x30000104) = 0x80200000;
-	while (MEM4(0x30000104) >> 20 & 0x7f);
-	return 0;
+	while (--m && (MEM4(0x30000104) >> 20 & 0x7f));
 }
 
 static void dmc_init_post_setting(unsigned freq) {
