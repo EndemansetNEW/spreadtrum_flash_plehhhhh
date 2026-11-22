@@ -111,7 +111,11 @@ static int read_flash(uint8_t *pkt) {
 	pkt = dl_send_buf();
 	WRITE16_BE(pkt, BSL_REP_READ_FLASH);
 	WRITE16_BE(pkt + 2, size);
-	memcpy(pkt + 4, (void*)addr, size);
+	if (addr >= 0xffff0000) {
+		memcpy(pkt + 4, (void*)addr, size);
+	} else {
+		((int (*)(uint32_t, void*, uint32_t))0xffff5781)(addr, pkt + 4, size);
+	}
 	dl_send_packet(pkt);
 	return 0;
 }
