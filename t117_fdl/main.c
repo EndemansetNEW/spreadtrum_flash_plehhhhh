@@ -97,7 +97,7 @@ static int read_flash(uint8_t *pkt) {
 
 	if (len == 12) offs = READ32_BE(pkt + 12);
 	if (offs != ~0u) {
-		// TODO
+		addr += offs;
 	}
 
 	pkt = dl_send_buf();
