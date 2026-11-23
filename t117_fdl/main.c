@@ -116,7 +116,7 @@ static int read_flash(uint8_t *pkt) {
 	if (addr >= 0xffff0000) {
 		memcpy(pkt + 4, (void*)addr, size);
 	} else {
-		((int (*)(uint32_t, void*, uint32_t))0xffff5529)(addr, pkt + 4, size);
+		((int (*)(uint32_t, void*, uint32_t, uint32_t))0xffff5529)(addr, pkt + 4, size, 0x20300000);
 	}
 	dl_send_packet(pkt);
 	return 0;
