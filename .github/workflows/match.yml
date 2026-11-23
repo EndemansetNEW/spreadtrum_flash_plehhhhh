@@ -32,6 +32,6 @@ jobs:
       - name: Publish Combined GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: build-${{ github.event.workflow_run.run_number }}
-          name: Build #${{ github.event.workflow_run.run_number }} (FDL1 + FDL2)
+          tag_name: build-${{ github.event.workflow_run.head_sha }}
+          name: Build (${{ github.event.workflow_run.head_sha }})
           files: dist/*
