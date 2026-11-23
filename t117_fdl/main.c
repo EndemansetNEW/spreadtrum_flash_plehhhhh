@@ -90,9 +90,6 @@ static int set_baudrate(uint8_t *pkt) {
 static void sfc_setup(void) {
 	MEM4(0x20e00000) |= (1 << 2) | (1 << 6);
 	MEM4(0x21500000) |= 0x03;
-	MEM4(0x402d0220) |= 0x03;
-	MEM4(0x402d0300) |= 0x03;
-	MEM4(0x21500054) = (MEM4(0x21500054) & ~3u) | 2u;
 
 	MEM4(SFC_BASE + 0x00) = 1;
 	MEM4(SFC_BASE + 0x14) = 0x10001;
@@ -149,24 +146,33 @@ static int read_flash(uint8_t *pkt) {
 		addr += offs;
 	}
 
-	{
-		static int sfc_done = 0;
-		if (!sfc_done) {
-			sfc_setup();
-			sfc_done = 1;
-		}
-	}
-
 	pkt = dl_send_buf();
 	WRITE16_BE(pkt, BSL_REP_READ_FLASH);
 	WRITE16_BE(pkt + 2, size);
 	if (addr >= 0xffff0000) {
 		memcpy(pkt + 4, (void*)addr, size);
-	} else if (addr == 0x9F000000) {
-		uint32_t id = sfc_jedec_id();
-		memset(pkt + 4, 0, size);
-		memcpy(pkt + 4, &id, 4);
+	} else if (addr == 0x7F000000) {
+		uint32_t *out = (uint32_t*)(pkt + 4);
+		memset(out, 0, size);
+		out[0] = 0x11111111;
+		MEM4(0x20e00000) |= (1 << 2) | (1 << 6);
+		out[1] = MEM4(0x20e00000);
+		MEM4(0x21500000) |= 0x03;
+		out[2] = MEM4(0x21500000);
+		MEM4(SFC_BASE + 0x00) = 1;
+		MEM4(SFC_BASE + 0x14) = 0x10001;
+		MEM4(SFC_BASE + 0x18) = 0;
+		MEM4(SFC_BASE + 0x1C) = 0x200;
+		MEM4(SFC_BASE + 0x20) = 0;
+		out[3] = 0x44444444;
+		out[4] = sfc_jedec_id();
+		out[5] = 0x66666666;
 	} else {
+		static int sfc_done = 0;
+		if (!sfc_done) {
+			sfc_setup();
+			sfc_done = 1;
+		}
 		sfc_read_bytes(addr, pkt + 4, size);
 	}
 	dl_send_packet(pkt);
