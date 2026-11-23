@@ -100,37 +100,43 @@ static void sfc_exec(void) {
 	MEM4(SFC_BASE + 0x0C) = 0xFF;
 	MEM4(SFC_BASE + 0x04) = 1;
 	for (volatile int i = 0; i < 4096; i++) {
-		if (MEM4(SFC_BASE + 0x10) & 1) break;
+		if (MEM4(SFC_BASE + 0x10) != 0) break;
 	}
 	MEM4(SFC_BASE + 0x0C) = 0xFF;
 }
 
 static uint32_t sfc_jedec_id(void) {
 	MEM4(SFC_BASE + 0x08) = 1;
-	MEM4(SFC_BASE + 0x2C) = (1 << 20) | 0x9F;
-	MEM4(SFC_BASE + 0x30) = (3 << 20) | 1;
-	MEM4(SFC_BASE + 0x34) = 0;
+	MEM4(SFC_BASE + 0x58) = 0x9F;
+	MEM4(SFC_BASE + 0x5C) = 0;
+	MEM4(SFC_BASE + 0x2C) = (2 << 20);
+	MEM4(SFC_BASE + 0x30) = 0;
+	MEM4(SFC_BASE + 0x34) = 1;
 	MEM4(SFC_BASE + 0x38) = 0;
-	MEM4(SFC_BASE + 0x3C) = 0;
 	sfc_exec();
-	return MEM4(SFC_BASE + 0x58) & 0xFFFFFF;
+	return MEM4(SFC_BASE + 0x10) & 0xFFFFFF;
 }
 
 static void sfc_read_bytes(uint32_t addr, uint8_t *dst, uint32_t len) {
 	while (len > 0) {
-		uint32_t chunk = len > 8 ? 8 : len;
-		uint32_t w0, w1;
+		uint32_t chunk = len > 16 ? 16 : len;
+		uint32_t w0, w1, w2, w3;
 		MEM4(SFC_BASE + 0x08) = 1;
-		MEM4(SFC_BASE + 0x2C) = (1 << 20) | 0x03;
-		MEM4(SFC_BASE + 0x30) = (3 << 20) | ((addr >> 16) & 0xFF) | (((addr >> 8) & 0xFF) << 8) | ((addr & 0xFF) << 16);
-		MEM4(SFC_BASE + 0x34) = (chunk << 20) | 1;
+		MEM4(SFC_BASE + 0x58) = 0x03;
+		MEM4(SFC_BASE + 0x5C) = ((addr >> 16) & 0xFF) | (((addr >> 8) & 0xFF) << 8) | ((addr & 0xFF) << 16);
+		MEM4(SFC_BASE + 0x2C) = ((chunk - 1) << 20);
+		MEM4(SFC_BASE + 0x30) = (2 << 20);
+		MEM4(SFC_BASE + 0x34) = 3;
 		MEM4(SFC_BASE + 0x38) = 0;
-		MEM4(SFC_BASE + 0x3C) = 0;
 		sfc_exec();
-		w0 = MEM4(SFC_BASE + 0x58);
-		w1 = MEM4(SFC_BASE + 0x5C);
+		w0 = MEM4(SFC_BASE + 0x10);
+		w1 = MEM4(SFC_BASE + 0x14);
+		w2 = MEM4(SFC_BASE + 0x18);
+		w3 = MEM4(SFC_BASE + 0x1C);
 		memcpy(dst, &w0, chunk > 4 ? 4 : chunk);
-		if (chunk > 4) memcpy(dst + 4, &w1, chunk - 4);
+		if (chunk > 4) memcpy(dst + 4, &w1, chunk > 8 ? 4 : chunk - 4);
+		if (chunk > 8) memcpy(dst + 8, &w2, chunk > 12 ? 4 : chunk - 8);
+		if (chunk > 12) memcpy(dst + 12, &w3, chunk - 12);
 		addr += chunk;
 		dst += chunk;
 		len -= chunk;
@@ -159,8 +165,8 @@ static int read_flash(uint8_t *pkt) {
 		*out++ = 0x11111111;
 		sfc_setup();
 		*out++ = sfc_jedec_id();
-		*out++ = MEM4(SFC_BASE + 0x58);
-		*out++ = MEM4(SFC_BASE + 0x5C);
+		*out++ = MEM4(SFC_BASE + 0x10);
+		*out++ = MEM4(SFC_BASE + 0x14);
 		sfc_read_bytes(0, (uint8_t*)(pkt + 32), 32);
 		*out++ = 0x66666666;
 	} else {
