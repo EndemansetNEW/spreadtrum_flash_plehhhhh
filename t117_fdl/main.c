@@ -86,7 +86,7 @@ static int set_baudrate(uint8_t *pkt) {
 }
 
 typedef int (*brom_sfc_init_t)(void);
-typedef int (*brom_sfc_read_t)(uint32_t addr, void *dst, uint32_t len);
+typedef int (*brom_sfc_read_t)(uint32_t cs, uint32_t addr, void *dst, uint32_t len);
 
 static int read_flash(uint8_t *pkt) {
 	unsigned len = READ16_BE(pkt + 2);
@@ -114,10 +114,10 @@ static int read_flash(uint8_t *pkt) {
 			uint32_t *out = (uint32_t*)(pkt + 4);
 			memset(out, 0, size);
 			*out++ = 0x11111111;
-			*out++ = ((brom_sfc_read_t)0xffff552b)(0, (void*)(pkt + 32), 0x100);
+			*out++ = ((brom_sfc_read_t)0xffff552b)(0, 0, (void*)(pkt + 32), 0x100);
 			*out++ = 0x22222222;
 		} else {
-			((brom_sfc_read_t)0xffff552b)(addr, pkt + 4, size);
+			((brom_sfc_read_t)0xffff552b)(0, addr, pkt + 4, size);
 		}
 	}
 	dl_send_packet(pkt);
