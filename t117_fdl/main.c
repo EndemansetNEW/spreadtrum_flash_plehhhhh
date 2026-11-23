@@ -172,6 +172,42 @@ static int read_flash(uint8_t *pkt) {
 	return 0;
 }
 
+static struct {
+	uint32_t addr, size;
+} rd_status;
+
+static int read_start(uint8_t *pkt) {
+	static int sfc_done = 0;
+	if (!sfc_done) {
+		sfc_setup();
+		sfc_done = 1;
+	}
+	rd_status.addr = READ32_BE(pkt + 4);
+	rd_status.size = READ32_BE(pkt + 8);
+	return BSL_REP_ACK;
+}
+
+static int read_midst(uint8_t *pkt) {
+	uint32_t size = READ32_BE(pkt + 4);
+	uint32_t offs = READ32_BE(pkt + 8);
+	uint32_t addr = rd_status.addr + offs;
+
+	pkt = dl_send_buf();
+	WRITE16_BE(pkt, BSL_REP_READ_FLASH);
+	WRITE16_BE(pkt + 2, size);
+	if (addr >= 0xffff0000) {
+		memcpy(pkt + 4, (void*)addr, size);
+	} else if (rd_status.addr == 0x9F000000) {
+		uint32_t id = sfc_jedec_id();
+		memset(pkt + 4, 0, size);
+		memcpy(pkt + 4, &id, 4);
+	} else {
+		sfc_read_bytes(addr, pkt + 4, size);
+	}
+	dl_send_packet(pkt);
+	return 0;
+}
+
 #if WITH_EFUSE
 static int read_efuse(uint8_t *pkt) {
 	unsigned len = READ16_BE(pkt + 2);
@@ -270,6 +306,18 @@ void dl_main(void) {
 
 		case BSL_CMD_READ_FLASH:
 			ret = read_flash(pkt);
+			break;
+
+		case BSL_CMD_READ_START:
+			ret = read_start(pkt);
+			break;
+
+		case BSL_CMD_READ_MIDST:
+			ret = read_midst(pkt);
+			break;
+
+		case BSL_CMD_READ_END:
+			ret = BSL_REP_ACK;
 			break;
 
 		case BSL_CMD_OFF_CHG:
