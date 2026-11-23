@@ -92,10 +92,8 @@ static void sfc_setup(void) {
 	MEM4(0x21500068) = (MEM4(0x21500068) & ~7u) | 1u;
 
 	MEM4(SFC_BASE + 0x00) = 1;
-	MEM4(SFC_BASE + 0x14) = 0x10001;
-	MEM4(SFC_BASE + 0x18) = 0;
-	MEM4(SFC_BASE + 0x1C) = 0x200;
-	MEM4(SFC_BASE + 0x20) = 0;
+	MEM4(SFC_BASE + 0x08) = 1;
+	MEM4(SFC_BASE + 0x0C) = 0xFF;
 }
 
 static void sfc_exec(void) {
@@ -109,26 +107,28 @@ static void sfc_exec(void) {
 
 static uint32_t sfc_jedec_id(void) {
 	MEM4(SFC_BASE + 0x08) = 1;
-	MEM4(SFC_BASE + 0x30) = 0x9F;
-	MEM4(SFC_BASE + 0x34) = 0;
-	MEM4(SFC_BASE + 0x60) = (1 << 0) | (1 << 3) | (1 << 4);
-	MEM4(SFC_BASE + 0x64) = (1 << 0) | (0 << 3) | (3 << 4);
-	MEM4(SFC_BASE + 0x68) = 0;
+	MEM4(SFC_BASE + 0x2C) = (3 << 16) | 0x9F;
+	MEM4(SFC_BASE + 0x30) = 0;
+	MEM4(SFC_BASE + 0x34) = (1 << 0) | (1 << 2);
+	MEM4(SFC_BASE + 0x38) = 0;
 	sfc_exec();
-	return MEM4(SFC_BASE + 0x34) & 0xFFFFFF;
+	return MEM4(SFC_BASE + 0x58) & 0xFFFFFF;
 }
 
 static void sfc_read_bytes(uint32_t addr, uint8_t *dst, uint32_t len) {
 	while (len > 0) {
-		uint32_t chunk = len > 32 ? 32 : len;
-		uint32_t cmd = 0x03 | (((addr >> 16) & 0xFF) << 8) | (((addr >> 8) & 0xFF) << 16) | ((addr & 0xFF) << 24);
+		uint32_t chunk = len > 8 ? 8 : len;
+		uint32_t w0, w1;
 		MEM4(SFC_BASE + 0x08) = 1;
-		MEM4(SFC_BASE + 0x30) = cmd;
-		MEM4(SFC_BASE + 0x60) = (1 << 0) | (1 << 3) | (4 << 4);
-		MEM4(SFC_BASE + 0x64) = (1 << 0) | (0 << 3) | (chunk << 4);
-		MEM4(SFC_BASE + 0x68) = 0;
+		MEM4(SFC_BASE + 0x2C) = (chunk << 16) | 0x03;
+		MEM4(SFC_BASE + 0x30) = addr & 0xFFFFFF;
+		MEM4(SFC_BASE + 0x34) = (1 << 0) | (1 << 1) | (1 << 2);
+		MEM4(SFC_BASE + 0x38) = 0;
 		sfc_exec();
-		memcpy(dst, (void*)(SFC_BASE + 0x34), chunk);
+		w0 = MEM4(SFC_BASE + 0x58);
+		w1 = MEM4(SFC_BASE + 0x5C);
+		memcpy(dst, &w0, chunk > 4 ? 4 : chunk);
+		if (chunk > 4) memcpy(dst + 4, &w1, chunk - 4);
 		addr += chunk;
 		dst += chunk;
 		len -= chunk;
@@ -151,22 +151,15 @@ static int read_flash(uint8_t *pkt) {
 	WRITE16_BE(pkt + 2, size);
 	if (addr >= 0xffff0000) {
 		memcpy(pkt + 4, (void*)addr, size);
-	} else if (addr == 0x7E000000) {
-		uint32_t *out = (uint32_t*)(pkt + 4);
-		memset(out, 0, size);
-		*out++ = 0x11111111;
-		*out++ = MEM4(0x20e00000);
-		*out++ = MEM4(0x21500068);
-		*out++ = 0x22222222;
 	} else if (addr == 0x7F000000) {
 		uint32_t *out = (uint32_t*)(pkt + 4);
 		memset(out, 0, size);
 		*out++ = 0x11111111;
 		sfc_setup();
-		*out++ = MEM4(0x20e00000);
-		*out++ = MEM4(0x21500068);
-		*out++ = 0x44444444;
 		*out++ = sfc_jedec_id();
+		*out++ = MEM4(SFC_BASE + 0x58);
+		*out++ = MEM4(SFC_BASE + 0x5C);
+		sfc_read_bytes(0, (uint8_t*)(pkt + 32), 32);
 		*out++ = 0x66666666;
 	} else {
 		static int sfc_done = 0;
