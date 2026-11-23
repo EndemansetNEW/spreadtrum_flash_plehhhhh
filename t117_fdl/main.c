@@ -88,9 +88,7 @@ static int set_baudrate(uint8_t *pkt) {
 #define SFC_BASE 0x20300000
 
 static void sfc_setup(void) {
-	MEM4(0x20e03000) = (1 << 5) | (1 << 6) | (1 << 17);
-	MEM4(0x402a0120) |= 0x100080;
-	MEM4(0x402a0520) = 0x21050000;
+	MEM4(0x20e00000) |= (1 << 6);
 	MEM4(SFC_BASE + 0x00) = 1;
 	MEM4(SFC_BASE + 0x14) = 0x10001;
 	MEM4(SFC_BASE + 0x18) = 0;
