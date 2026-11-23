@@ -155,13 +155,13 @@ static int read_flash(uint8_t *pkt) {
 	} else if (addr == 0x7F000000) {
 		uint32_t *out = (uint32_t*)(pkt + 4);
 		memset(out, 0, size);
-		out = 0x11111111;
+		*out++ = 0x11111111;
 		sfc_setup();
-		out = MEM4(0x20e00000);
-		out = MEM4(0x21500000);
-		out = 0x44444444;
-		out = sfc_jedec_id();
-		out = 0x66666666;
+		*out++ = MEM4(0x20e00000);
+		*out++ = MEM4(0x21500000);
+		*out++ = 0x44444444;
+		*out++ = sfc_jedec_id();
+		*out++ = 0x66666666;
 	} else {
 		static int sfc_done = 0;
 		if (!sfc_done) {
