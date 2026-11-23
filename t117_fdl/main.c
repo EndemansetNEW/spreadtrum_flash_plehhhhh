@@ -139,10 +139,6 @@ static int read_flash(uint8_t *pkt) {
 	uint32_t size = READ32_BE(pkt + 8);
 	uint32_t offs = -1;
 
-	if ((len != 8 && len != 12) ||
-			size >= MAX_PKT_PAYLOAD)
-		return BSL_REP_INVALID_CMD;
-
 	if (len == 12) offs = READ32_BE(pkt + 12);
 	if (offs != ~0u) {
 		addr += offs;
@@ -255,6 +251,7 @@ void dl_main(void) {
 	dl_status.start = ~0;
 
 #if FDL2
+	(void)version;
 	dl_send_ack(BSL_REP_ACK);
 #else
 	for (;;) {
@@ -298,7 +295,6 @@ void dl_main(void) {
 			ret = set_baudrate(pkt);
 			break;
 
-		case 6:
 		case BSL_CMD_READ_FLASH:
 			ret = read_flash(pkt);
 			break;
