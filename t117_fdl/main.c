@@ -85,8 +85,22 @@ static int set_baudrate(uint8_t *pkt) {
 	return BSL_REP_ACK;
 }
 
-typedef int (*brom_sfc_init_t)(void);
 typedef int (*brom_sfc_read_t)(uint32_t cs, uint32_t addr, void *dst, uint32_t len);
+
+static void sfc_hw_enable(void) {
+	MEM4(0x20e00000) |= 0x80;
+	MEM4(0x20e00004) |= 0x800;
+	for (volatile int i = 0; i < 256; i++);
+	MEM4(0x20e00004) &= ~0x800u;
+
+	for (uint32_t a = 0x402a0520; a <= 0x402a0534; a += 4)
+		MEM4(a) = 0;
+	for (uint32_t a = 0x402a0120; a <= 0x402a0134; a += 4)
+		MEM4(a) |= 0x100080;
+
+	MEM4(0x21500038) = (MEM4(0x21500038) & ~7u) | 1u;
+	MEM4(0x20300000) = 0x180000;
+}
 
 static int read_flash(uint8_t *pkt) {
 	unsigned len = READ16_BE(pkt + 2);
@@ -105,15 +119,17 @@ static int read_flash(uint8_t *pkt) {
 	if (addr >= 0xffff0000) {
 		memcpy(pkt + 4, (void*)addr, size);
 	} else {
-		static int brom_sfc_done = 0;
-		if (!brom_sfc_done) {
-			((brom_sfc_init_t)0xffff53bd)();
-			brom_sfc_done = 1;
+		static int sfc_done = 0;
+		if (!sfc_done) {
+			sfc_hw_enable();
+			sfc_done = 1;
 		}
 		if (addr == 0x7F000000) {
 			uint32_t *out = (uint32_t*)(pkt + 4);
 			memset(out, 0, size);
 			*out++ = 0x11111111;
+			*out++ = MEM4(0x20e00000);
+			*out++ = MEM4(0x20300000);
 			*out++ = ((brom_sfc_read_t)0xffff552b)(0, 0, (void*)(pkt + 32), 0x100);
 			*out++ = 0x22222222;
 		} else {
