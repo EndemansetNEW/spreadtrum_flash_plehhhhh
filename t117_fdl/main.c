@@ -88,7 +88,7 @@ static int set_baudrate(uint8_t *pkt) {
 #define SFC_BASE 0x20300000
 
 static void sfc_setup(void) {
-	MEM4(0x20e00000) |= (1 << 5) | (1 << 6) | (1 << 17);
+	MEM4(0x20e01000) = (1 << 5) | (1 << 6) | (1 << 17);
 	MEM4(0x402a0120) |= 0x100080;
 	MEM4(0x402a0520) = 0x21050000;
 	MEM4(SFC_BASE + 0x00) = 1;
@@ -101,8 +101,10 @@ static void sfc_setup(void) {
 static void sfc_exec(void) {
 	MEM4(SFC_BASE + 0x0C) = 0xFF;
 	MEM4(SFC_BASE + 0x04) = 1;
-	while (MEM4(SFC_BASE + 0x20) & 1);
-	for (volatile int i = 0; i < 64; i++);
+	for (volatile int i = 0; i < 4096; i++) {
+		if (MEM4(SFC_BASE + 0x10) & 1) break;
+	}
+	MEM4(SFC_BASE + 0x0C) = 0xFF;
 }
 
 static uint32_t sfc_jedec_id(void) {
