@@ -298,6 +298,7 @@ void dl_main(void) {
 			ret = set_baudrate(pkt);
 			break;
 
+		case 6:
 		case BSL_CMD_READ_FLASH:
 			ret = read_flash(pkt);
 			break;
