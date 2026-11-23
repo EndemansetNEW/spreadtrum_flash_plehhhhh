@@ -107,10 +107,11 @@ static void sfc_exec(void) {
 
 static uint32_t sfc_jedec_id(void) {
 	MEM4(SFC_BASE + 0x08) = 1;
-	MEM4(SFC_BASE + 0x2C) = (3 << 16) | 0x9F;
-	MEM4(SFC_BASE + 0x30) = 0;
-	MEM4(SFC_BASE + 0x34) = (1 << 0) | (1 << 2);
+	MEM4(SFC_BASE + 0x2C) = (1 << 20) | 0x9F;
+	MEM4(SFC_BASE + 0x30) = (3 << 20) | 1;
+	MEM4(SFC_BASE + 0x34) = 0;
 	MEM4(SFC_BASE + 0x38) = 0;
+	MEM4(SFC_BASE + 0x3C) = 0;
 	sfc_exec();
 	return MEM4(SFC_BASE + 0x58) & 0xFFFFFF;
 }
@@ -120,10 +121,11 @@ static void sfc_read_bytes(uint32_t addr, uint8_t *dst, uint32_t len) {
 		uint32_t chunk = len > 8 ? 8 : len;
 		uint32_t w0, w1;
 		MEM4(SFC_BASE + 0x08) = 1;
-		MEM4(SFC_BASE + 0x2C) = (chunk << 16) | 0x03;
-		MEM4(SFC_BASE + 0x30) = addr & 0xFFFFFF;
-		MEM4(SFC_BASE + 0x34) = (1 << 0) | (1 << 1) | (1 << 2);
+		MEM4(SFC_BASE + 0x2C) = (1 << 20) | 0x03;
+		MEM4(SFC_BASE + 0x30) = (3 << 20) | ((addr >> 16) & 0xFF) | (((addr >> 8) & 0xFF) << 8) | ((addr & 0xFF) << 16);
+		MEM4(SFC_BASE + 0x34) = (chunk << 20) | 1;
 		MEM4(SFC_BASE + 0x38) = 0;
+		MEM4(SFC_BASE + 0x3C) = 0;
 		sfc_exec();
 		w0 = MEM4(SFC_BASE + 0x58);
 		w1 = MEM4(SFC_BASE + 0x5C);
