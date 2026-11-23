@@ -85,6 +85,54 @@ static int set_baudrate(uint8_t *pkt) {
 	return BSL_REP_ACK;
 }
 
+#define SFC_BASE 0x20300000
+
+static void sfc_setup(void) {
+	MEM4(0x20e00000) |= (1 << 5) | (1 << 6) | (1 << 17);
+	MEM4(0x402a0120) |= 0x100080;
+	MEM4(0x402a0520) = 0x21050000;
+	MEM4(SFC_BASE + 0x00) = 1;
+	MEM4(SFC_BASE + 0x14) = 0x10001;
+	MEM4(SFC_BASE + 0x18) = 0;
+	MEM4(SFC_BASE + 0x1C) = 0x200;
+	MEM4(SFC_BASE + 0x20) = 0;
+}
+
+static void sfc_exec(void) {
+	MEM4(SFC_BASE + 0x0C) = 0xFF;
+	MEM4(SFC_BASE + 0x04) = 1;
+	while (MEM4(SFC_BASE + 0x20) & 1);
+	for (volatile int i = 0; i < 64; i++);
+}
+
+static uint32_t sfc_jedec_id(void) {
+	MEM4(SFC_BASE + 0x08) = 1;
+	MEM4(SFC_BASE + 0x30) = 0x9F;
+	MEM4(SFC_BASE + 0x34) = 0;
+	MEM4(SFC_BASE + 0x60) = (1 << 0) | (1 << 3) | (1 << 4);
+	MEM4(SFC_BASE + 0x64) = (1 << 0) | (0 << 3) | (3 << 4);
+	MEM4(SFC_BASE + 0x68) = 0;
+	sfc_exec();
+	return MEM4(SFC_BASE + 0x34) & 0xFFFFFF;
+}
+
+static void sfc_read_bytes(uint32_t addr, uint8_t *dst, uint32_t len) {
+	while (len > 0) {
+		uint32_t chunk = len > 32 ? 32 : len;
+		uint32_t cmd = 0x03 | (((addr >> 16) & 0xFF) << 8) | (((addr >> 8) & 0xFF) << 16) | ((addr & 0xFF) << 24);
+		MEM4(SFC_BASE + 0x08) = 1;
+		MEM4(SFC_BASE + 0x30) = cmd;
+		MEM4(SFC_BASE + 0x60) = (1 << 0) | (1 << 3) | (4 << 4);
+		MEM4(SFC_BASE + 0x64) = (1 << 0) | (0 << 3) | (chunk << 4);
+		MEM4(SFC_BASE + 0x68) = 0;
+		sfc_exec();
+		memcpy(dst, (void*)(SFC_BASE + 0x34), chunk);
+		addr += chunk;
+		dst += chunk;
+		len -= chunk;
+	}
+}
+
 static int read_flash(uint8_t *pkt) {
 	unsigned len = READ16_BE(pkt + 2);
 	uint32_t addr = READ32_BE(pkt + 4);
@@ -103,9 +151,7 @@ static int read_flash(uint8_t *pkt) {
 	{
 		static int sfc_done = 0;
 		if (!sfc_done) {
-			MEM4(0x20e00000) |= (1 << 5) | (1 << 6) | (1 << 17);
-			MEM4(0x402a0120) |= 0x100080;
-			MEM4(0x402a0520) = 0x21050000;
+			sfc_setup();
 			sfc_done = 1;
 		}
 	}
@@ -115,8 +161,12 @@ static int read_flash(uint8_t *pkt) {
 	WRITE16_BE(pkt + 2, size);
 	if (addr >= 0xffff0000) {
 		memcpy(pkt + 4, (void*)addr, size);
+	} else if (addr == 0x9F000000) {
+		uint32_t id = sfc_jedec_id();
+		memset(pkt + 4, 0, size);
+		memcpy(pkt + 4, &id, 4);
 	} else {
-		((int (*)(uint32_t, void*, uint32_t, uint32_t))0xffff5529)(addr, pkt + 4, size, 0x20300000);
+		sfc_read_bytes(addr, pkt + 4, size);
 	}
 	dl_send_packet(pkt);
 	return 0;
@@ -239,4 +289,3 @@ void dl_main(void) {
 			dl_send_ack(ret);
 	}
 }
-
