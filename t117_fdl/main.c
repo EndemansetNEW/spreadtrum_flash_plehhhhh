@@ -88,6 +88,15 @@ static int set_baudrate(uint8_t *pkt) {
 #define SFC_BASE 0x20300000
 
 static void sfc_setup(void) {
+	asm volatile(
+		"mrc p15, 0, r0, c1, c0, 0\n"
+		"bic r0, r0, #5\n"
+		"mcr p15, 0, r0, c1, c0, 0\n"
+		"dsb\n"
+		"isb\n"
+		::: "r0"
+	);
+
 	MEM4(0x20e00000) |= (1 << 2) | (1 << 6);
 	MEM4(0x21500068) = (MEM4(0x21500068) & ~7u) | 1u;
 
