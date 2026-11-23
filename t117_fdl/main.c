@@ -107,7 +107,7 @@ static int read_flash(uint8_t *pkt) {
 	} else {
 		static int brom_sfc_done = 0;
 		if (!brom_sfc_done) {
-			((brom_sfc_init_t)0xffff5633)();
+			((brom_sfc_init_t)0xffff420b)();
 			brom_sfc_done = 1;
 		}
 		if (addr == 0x7F000000) {
