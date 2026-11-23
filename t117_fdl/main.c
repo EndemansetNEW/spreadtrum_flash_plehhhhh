@@ -255,12 +255,6 @@ void dl_main(void) {
 	dl_status.start = ~0;
 
 #if FDL2
-	pkt = dl_send_buf();
-	WRITE16_BE(pkt, BSL_REP_LOG);
-	WRITE16_BE(pkt + 2, sizeof(version));
-	memcpy(pkt + 4, version, sizeof(version));
-	dl_send_packet(pkt);
-
 	dl_send_ack(BSL_REP_ACK);
 #else
 	for (;;) {
