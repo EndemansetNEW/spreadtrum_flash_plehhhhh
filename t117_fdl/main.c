@@ -88,16 +88,7 @@ static int set_baudrate(uint8_t *pkt) {
 #define SFC_BASE 0x20300000
 
 static void sfc_setup(void) {
-	asm volatile(
-		"mrc p15, 0, r0, c1, c0, 0\n"
-		"bic r0, r0, #5\n"
-		"mcr p15, 0, r0, c1, c0, 0\n"
-		"dsb\n"
-		"isb\n"
-		::: "r0"
-	);
-
-	MEM4(0x20e00000) |= (1 << 2) | (1 << 6);
+	MEM4(0x20e00000) |= 0xFFFFFFFFu;
 	MEM4(0x21500068) = (MEM4(0x21500068) & ~7u) | 1u;
 
 	MEM4(SFC_BASE + 0x00) = 1;
@@ -160,6 +151,13 @@ static int read_flash(uint8_t *pkt) {
 	WRITE16_BE(pkt + 2, size);
 	if (addr >= 0xffff0000) {
 		memcpy(pkt + 4, (void*)addr, size);
+	} else if (addr == 0x7E000000) {
+		uint32_t *out = (uint32_t*)(pkt + 4);
+		memset(out, 0, size);
+		*out++ = 0x11111111;
+		*out++ = MEM4(0x20e00000);
+		*out++ = MEM4(0x21500068);
+		*out++ = 0x22222222;
 	} else if (addr == 0x7F000000) {
 		uint32_t *out = (uint32_t*)(pkt + 4);
 		memset(out, 0, size);
