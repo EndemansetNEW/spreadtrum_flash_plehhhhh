@@ -103,7 +103,9 @@ static int read_flash(uint8_t *pkt) {
 	{
 		static int sfc_done = 0;
 		if (!sfc_done) {
-			((int (*)(void))0xffff5741)();
+			MEM4(0x20e00000) |= (1 << 5) | (1 << 6) | (1 << 17);
+			MEM4(0x402a0120) |= 0x100080;
+			MEM4(0x402a0520) = 0x21050000;
 			sfc_done = 1;
 		}
 	}
@@ -114,7 +116,7 @@ static int read_flash(uint8_t *pkt) {
 	if (addr >= 0xffff0000) {
 		memcpy(pkt + 4, (void*)addr, size);
 	} else {
-		((int (*)(uint32_t, void*, uint32_t))0xffff5789)(addr >> 9, pkt + 4, size);
+		((int (*)(uint32_t, void*, uint32_t))0xffff5529)(addr, pkt + 4, size);
 	}
 	dl_send_packet(pkt);
 	return 0;
