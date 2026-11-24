@@ -91,23 +91,19 @@ static void sfc_setup(void) {
 	MEM4(0x20e00000) |= 0xFFFFFFFFu;
 	MEM4(0x20e00004) = 0;
 
-	/* Exact brom.bin 0x52be..0x5310 SFC pinmux & CGM_SFC_CFG (+0x6C) */
 	for (uint32_t i = 0; i < 6; i++) {
 		MEM4(0x402a0520 + i * 4) = 0;
 	}
 	MEM4(0x2150006C) = (MEM4(0x2150006C) & ~7u) | 1u;
 	MEM4(0x402a0120) = 0x18cba80u;
-
-	MEM4(SFC_BASE + 0x00) = 1;
-	MEM4(SFC_BASE + 0x08) = 1;
-	MEM4(SFC_BASE + 0x0C) = 0xFF;
 }
 
 static void sfc_exec(void) {
+	MEM4(SFC_BASE + 0x00) = 1;
 	MEM4(SFC_BASE + 0x0C) = 0xFF;
 	MEM4(SFC_BASE + 0x04) = 1;
 	for (volatile int i = 0; i < 8192; i++) {
-		if ((MEM4(SFC_BASE + 0x04) & 1) == 0) break;
+		if (MEM4(SFC_BASE + 0x10) & 1) break;
 	}
 	MEM4(SFC_BASE + 0x0C) = 0xFF;
 }
@@ -170,8 +166,8 @@ static int read_flash(uint8_t *pkt) {
 		*out++ = 0x11111111;
 		sfc_setup();
 		*out++ = sfc_jedec_id();
-		*out++ = MEM4(0x2150006C);
-		*out++ = MEM4(SFC_BASE + 0x60);
+		*out++ = MEM4(SFC_BASE + 0x58);
+		*out++ = MEM4(SFC_BASE + 0x5C);
 		sfc_read_bytes(0, (uint8_t*)(pkt + 32), 32);
 		*out++ = 0x66666666;
 		for (uint32_t i = 0; i < 36; i++) {
