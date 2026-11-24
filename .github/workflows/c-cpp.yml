@@ -25,18 +25,18 @@ jobs:
           mkdir -p "$GITHUB_WORKSPACE/dist"
 
           make clean
-          make CROSS_COMPILE=arm-none-eabi- SDRAM_INIT=0
+          make CC=arm-none-eabi-gcc OBJCOPY=arm-none-eabi-objcopy SDRAM_INIT=0
           cp "$(find . -name '*fdl1*.bin' | head -n 1)" "$GITHUB_WORKSPACE/dist/t117_fdl1.bin"
 
           make clean
-          make CROSS_COMPILE=arm-none-eabi- FDL2=1
+          make CC=arm-none-eabi-gcc OBJCOPY=arm-none-eabi-objcopy FDL2=1
           FDL2_BIN=$(find . -name '*fdl2*.bin' | head -n 1)
           python3 -c "
           import struct
           raw = open('$FDL2_BIN', 'rb').read()
           hdr = bytearray(512)
           hdr[:4] = b'DHTB'
-          hdr = 1
+          hdr.__setitem__(4, 1)
           struct.pack_into('<I', hdr, 0x30, len(raw))
           open('$GITHUB_WORKSPACE/dist/t117_fdl2_hdr.bin', 'wb').write(hdr + raw)
           "
