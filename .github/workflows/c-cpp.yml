@@ -45,7 +45,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: build-${{ github.run_number }}
-          name: Build #${{ github.run_number }} (T117 FDL1 + FDL2)
+          name: "Build ${{ github.run_number }} (T117 FDL1 + FDL2)"
           files: |
             dist/t117_fdl1.bin
             dist/t117_fdl2_hdr.bin
