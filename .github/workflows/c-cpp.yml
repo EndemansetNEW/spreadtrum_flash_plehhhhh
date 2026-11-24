@@ -26,14 +26,13 @@ jobs:
 
           make clean
           make CC=arm-none-eabi-gcc OBJCOPY=arm-none-eabi-objcopy SDRAM_INIT=0
-          cp "$(find . -name '*fdl1*.bin' | head -n 1)" "$GITHUB_WORKSPACE/dist/t117_fdl1.bin"
+          cp t117_fdl1.bin "$GITHUB_WORKSPACE/dist/t117_fdl1.bin"
 
           make clean
           make CC=arm-none-eabi-gcc OBJCOPY=arm-none-eabi-objcopy FDL2=1
-          FDL2_BIN=$(find . -name '*fdl2*.bin' | head -n 1)
           python3 -c "
           import struct
-          raw = open('$FDL2_BIN', 'rb').read()
+          raw = open('t117_fdl1.bin', 'rb').read()
           hdr = bytearray(512)
           hdr[:4] = b'DHTB'
           hdr.__setitem__(4, 1)
