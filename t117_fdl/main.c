@@ -90,16 +90,17 @@ static int set_baudrate(uint8_t *pkt) {
 static void sfc_setup(void) {
 	MEM4(0x20e00000) |= 0xFFFFFFFFu;
 	MEM4(0x20e00004) = 0;
+	MEM4(0x402a0120) |= 0x80u;
+	MEM4(0x2150006C) = (MEM4(0x2150006C) & ~7u) | 1u;
 
 	for (uint32_t i = 0; i < 6; i++) {
 		MEM4(0x402a0520 + i * 4) = 0;
 	}
-	MEM4(0x2150006C) = (MEM4(0x2150006C) & ~7u) | 1u;
-	MEM4(0x402a0120) = 0x18cba80u;
 }
 
 static void sfc_exec(void) {
 	MEM4(SFC_BASE + 0x00) = 1;
+	MEM4(SFC_BASE + 0x2C) |= 0x01000000u;
 	MEM4(SFC_BASE + 0x0C) = 0xFF;
 	MEM4(SFC_BASE + 0x04) = 1;
 	for (volatile int i = 0; i < 8192; i++) {
@@ -166,8 +167,8 @@ static int read_flash(uint8_t *pkt) {
 		*out++ = 0x11111111;
 		sfc_setup();
 		*out++ = sfc_jedec_id();
-		*out++ = MEM4(SFC_BASE + 0x58);
-		*out++ = MEM4(SFC_BASE + 0x5C);
+		*out++ = MEM4(0x402a0120);
+		*out++ = MEM4(SFC_BASE + 0x2C);
 		sfc_read_bytes(0, (uint8_t*)(pkt + 32), 32);
 		*out++ = 0x66666666;
 		for (uint32_t i = 0; i < 36; i++) {
