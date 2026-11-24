@@ -10,39 +10,36 @@ permissions:
 
 jobs:
   build:
-    runs-on: windows-latest
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Install ARM GCC Toolchain
-        run: |
-          choco install gcc-arm-embedded -y --no-progress
-          echo "C:\Program Files (x86)\GNU Arm Embedded Toolchain\10 2021.10\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+        run: sudo apt-get update && sudo apt-get install -y gcc-arm-none-eabi binutils-arm-none-eabi
 
       - name: Build t117_fdl1.bin and t117_fdl2_hdr.bin
-        shell: pwsh
         run: |
-          $dir = (Get-ChildItem -Recurse -Filter "ums9117_fdl1.ld").DirectoryName
-          Set-Location $dir
-          New-Item -ItemType Directory -Force -Path "$env:GITHUB_WORKSPACE\dist" | Out-Null
+          DIR=$(dirname $(find . -name "ums9117_fdl1.ld" | head -n 1))
+          cd "$DIR"
+          mkdir -p "$GITHUB_WORKSPACE/dist"
 
           make clean
-          make SDRAM_INIT=0
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          $fdl1 = Get-ChildItem -Recurse -Filter "*fdl1*.bin" | Select-Object -First 1
-          Copy-Item $fdl1.FullName "$env:GITHUB_WORKSPACE\dist\t117_fdl1.bin"
+          make CROSS_COMPILE=arm-none-eabi- SDRAM_INIT=0
+          cp "$(find . -name '*fdl1*.bin' | head -n 1)" "$GITHUB_WORKSPACE/dist/t117_fdl1.bin"
 
           make clean
-          make FDL2=1
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          $fdl2 = Get-ChildItem -Recurse -Filter "*fdl2*.bin" | Select-Object -First 1
-          $raw = [IO.File]::ReadAllBytes($fdl2.FullName)
-          $hdr = New-Object byte[] 512
-          [Text.Encoding]::ASCII.GetBytes("DHTB").CopyTo($hdr, 0)
-          $hdr.SetValue([byte]1, 4)
-          [BitConverter]::GetBytes([uint32]$raw.Length).CopyTo($hdr, 0x30)
-          [IO.File]::WriteAllBytes("$env:GITHUB_WORKSPACE\dist\t117_fdl2_hdr.bin", $hdr + $raw)
+          make CROSS_COMPILE=arm-none-eabi- FDL2=1
+          FDL2_BIN=$(find . -name '*fdl2*.bin' | head -n 1)
+          python3 -c "
+          import struct
+          raw = open('$FDL2_BIN', 'rb').read()
+          hdr = bytearray(512)
+          hdr[:4] = b'DHTB'
+          hdr = 1
+          struct.pack_into('<I', hdr, 0x30, len(raw))
+          open('$GITHUB_WORKSPACE/dist/t117_fdl2_hdr.bin', 'wb').write(hdr + raw)
+          "
 
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
