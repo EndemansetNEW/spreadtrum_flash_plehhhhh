@@ -16,7 +16,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Install ARM GCC Toolchain
-        run: carlosperate/arm-none-eabi-gcc-action@v1
+        uses: carlosperate/arm-none-eabi-gcc-action@v1
 
       - name: Build t117_fdl1.bin and t117_fdl2_hdr.bin
         run: |
