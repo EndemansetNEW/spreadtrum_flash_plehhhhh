@@ -87,27 +87,20 @@ static int set_baudrate(uint8_t *pkt) {
 
 #define SFC_BASE 0x20300000
 
+static void call_brom_safe(uint32_t fn) {
+	asm volatile(
+		"mov r4, sp\n"
+		"ldr sp, =0x0000A000\n"
+		"blx %0\n"
+		"mov sp, r4\n"
+		:
+		: "r"(fn)
+		: "r0", "r1", "r2", "r3", "r4", "lr", "memory"
+	);
+}
+
 static void sfc_setup(void) {
-	MEM4(0x20e00000) |= 0xFFFFFFFFu;
-	MEM4(0x20e00004) = 0;
-
-	/* Exact 0x5290..0x52b8 LDO / AON power-up sequence */
-	if (MEM4(0x402a0120) != 0) {
-		MEM4(0x402a0120) |= 0x80u;
-		MEM4(0x402a0124) |= 0x800u;
-		for (volatile int i = 0; i < 256; i++);
-		MEM4(0x402a0124) &= ~0x800u;
-	}
-
-	/* Exact 0x52be..0x52f6 SPI pinmux & pad drive */
-	for (uint32_t i = 0; i < 6; i++) {
-		MEM4(0x402a0520 + i * 4) = 0;
-		MEM4(0x402a0560 + i * 4) = 0x20ac + (i << 8);
-	}
-	MEM4(0x402a0578) = 0x1800;
-
-	/* Exact 0x52f8..0x5310 CGM_SFC_CFG (+0x6C) */
-	MEM4(0x2150006C) = (MEM4(0x2150006C) & ~7u) | 1u;
+	call_brom_safe(0xffff539b);
 }
 
 static void sfc_exec(void) {
@@ -178,7 +171,7 @@ static int read_flash(uint8_t *pkt) {
 		*out++ = 0x11111111;
 		sfc_setup();
 		*out++ = sfc_jedec_id();
-		*out++ = MEM4(0x402a0120);
+		*out++ = MEM4(SFC_BASE + 0x2C);
 		*out++ = MEM4(SFC_BASE + 0x60);
 		sfc_read_bytes(0, (uint8_t*)(pkt + 32), 32);
 		*out++ = 0x66666666;
