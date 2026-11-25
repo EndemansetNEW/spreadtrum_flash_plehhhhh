@@ -88,7 +88,9 @@ static int set_baudrate(uint8_t *pkt) {
 #define SFC_BASE 0x20300000
 
 static void sfc_setup(void) {
-	((void (*)(void))0xffff539b)();
+	((void (*)(void))0xffff528b)();
+	((void (*)(void))0xffff52bd)();
+	((void (*)(void))0xffff52f7)();
 }
 
 static void sfc_exec(void) {
@@ -159,7 +161,7 @@ static int read_flash(uint8_t *pkt) {
 		*out++ = 0x11111111;
 		sfc_setup();
 		*out++ = sfc_jedec_id();
-		*out++ = MEM4(SFC_BASE + 0x2C);
+		*out++ = MEM4(SFC_BASE + 0x58);
 		*out++ = MEM4(SFC_BASE + 0x60);
 		sfc_read_bytes(0, (uint8_t*)(pkt + 32), 32);
 		*out++ = 0x66666666;
