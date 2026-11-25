@@ -87,20 +87,32 @@ static int set_baudrate(uint8_t *pkt) {
 
 #define SFC_BASE 0x20300000
 
-static void call_brom_safe(uint32_t fn) {
-	asm volatile(
-		"mov r4, sp\n"
-		"ldr sp, =0x0000A000\n"
-		"blx %0\n"
-		"mov sp, r4\n"
-		:
-		: "r"(fn)
-		: "r0", "r1", "r2", "r3", "r4", "lr", "memory"
-	);
-}
-
 static void sfc_setup(void) {
-	call_brom_safe(0xffff539b);
+	/* Unlock AP_AHB_EB via SET register 0x20e03000 + direct 0x20e00000 */
+	MEM4(0x20e03000) = 0xFFFFFFFFu;
+	MEM4(0x20e00000) |= 0xFFFFFFFFu;
+	MEM4(0x20e00004) = 0;
+
+	/* Exact 0x2486..0x24c2 AON & PIN_CTRL registers */
+	MEM4(0x402e0000) |= 0x40u;
+	MEM4(0x402e0054) = (MEM4(0x402e0054) & ~3u) | 1u;
+	MEM4(0x402a049c) = (MEM4(0x402a049c) & ~3u) | 2u;
+	MEM4(0x402a04bc) = (MEM4(0x402a04bc) & ~3u) | 2u;
+
+	if (MEM4(0x402a0120) != 0) {
+		MEM4(0x402a0120) |= 0x80u;
+		MEM4(0x402a0124) |= 0x800u;
+		for (volatile int i = 0; i < 256; i++);
+		MEM4(0x402a0124) &= ~0x800u;
+	}
+
+	for (uint32_t i = 0; i < 6; i++) {
+		MEM4(0x402a0520 + i * 4) = 0;
+		MEM4(0x402a0560 + i * 4) = 0x20ac + (i << 8);
+	}
+	MEM4(0x402a0578) = 0x1800;
+
+	MEM4(0x2150006C) = (MEM4(0x2150006C) & ~7u) | 1u;
 }
 
 static void sfc_exec(void) {
@@ -171,8 +183,8 @@ static int read_flash(uint8_t *pkt) {
 		*out++ = 0x11111111;
 		sfc_setup();
 		*out++ = sfc_jedec_id();
-		*out++ = MEM4(SFC_BASE + 0x2C);
-		*out++ = MEM4(SFC_BASE + 0x60);
+		*out++ = MEM4(0x20e00000);
+		*out++ = MEM4(0x402e0054);
 		sfc_read_bytes(0, (uint8_t*)(pkt + 32), 32);
 		*out++ = 0x66666666;
 		for (uint32_t i = 0; i < 36; i++) {
