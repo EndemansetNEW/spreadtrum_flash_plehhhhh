@@ -91,50 +91,9 @@ static void sfc_setup(void) {
 	((void (*)(void))0xffff53b5)();
 }
 
-static void sfc_exec(void) {
-	MEM4(SFC_BASE + 0x00) = 1;
-	MEM4(SFC_BASE + 0x0C) = 0xFF;
-	MEM4(SFC_BASE + 0x04) = 1;
-	for (volatile int i = 0; i < 8192; i++) {
-		if (MEM4(SFC_BASE + 0x10) & 1) break;
-	}
-	MEM4(SFC_BASE + 0x0C) = 0xFF;
-}
-
-static uint32_t sfc_jedec_id(void) {
-	MEM4(SFC_BASE + 0x08) = 1;
-	MEM4(SFC_BASE + 0x58) = 0x9F;
-	MEM4(SFC_BASE + 0x5C) = 0;
-	MEM4(SFC_BASE + 0x2C) = (0 << 20) | 1;
-	MEM4(SFC_BASE + 0x34) = (2 << 20) | 3;
-	MEM4(SFC_BASE + 0x38) = 0;
-	sfc_exec();
-	return MEM4(SFC_BASE + 0x5C) & 0xFFFFFF;
-}
-
-static void sfc_read_bytes(uint32_t addr, uint8_t *dst, uint32_t len) {
-	while (len > 0) {
-		uint32_t chunk = len > 16 ? 16 : len;
-		uint32_t w0, w1, w2, w3;
-		MEM4(SFC_BASE + 0x08) = 1;
-		MEM4(SFC_BASE + 0x58) = 0x03;
-		MEM4(SFC_BASE + 0x5C) = ((addr >> 16) & 0xFF) | (((addr >> 8) & 0xFF) << 8) | ((addr & 0xFF) << 16);
-		MEM4(SFC_BASE + 0x2C) = (0 << 20) | 1;
-		MEM4(SFC_BASE + 0x34) = (2 << 20) | 1;
-		MEM4(SFC_BASE + 0x38) = ((chunk - 1) << 20) | 3;
-		sfc_exec();
-		w0 = MEM4(SFC_BASE + 0x60);
-		w1 = MEM4(SFC_BASE + 0x64);
-		w2 = MEM4(SFC_BASE + 0x68);
-		w3 = MEM4(SFC_BASE + 0x6C);
-		memcpy(dst, &w0, chunk > 4 ? 4 : chunk);
-		if (chunk > 4) memcpy(dst + 4, &w1, chunk > 8 ? 4 : chunk - 4);
-		if (chunk > 8) memcpy(dst + 8, &w2, chunk > 12 ? 4 : chunk - 8);
-		if (chunk > 12) memcpy(dst + 12, &w3, chunk - 12);
-		addr += chunk;
-		dst += chunk;
-		len -= chunk;
-	}
+static int brom_sfc_read(uint32_t addr, uint8_t *dst, uint32_t len) {
+	typedef int (*read_fn_t)(uint32_t, uint8_t *, uint32_t);
+	return ((read_fn_t)0xffff5525)(addr, dst, len);
 }
 
 static int read_flash(uint8_t *pkt) {
@@ -158,10 +117,9 @@ static int read_flash(uint8_t *pkt) {
 		memset(out, 0, size);
 		*out++ = 0x11111111;
 		sfc_setup();
-		*out++ = sfc_jedec_id();
+		*out++ = (uint32_t)brom_sfc_read(0, (uint8_t*)(pkt + 32), 32);
 		*out++ = MEM4(0x20e00000);
-		*out++ = MEM4(SFC_BASE + 0x60);
-		sfc_read_bytes(0, (uint8_t*)(pkt + 32), 32);
+		*out++ = MEM4(SFC_BASE + 0x10);
 		*out++ = 0x66666666;
 		for (uint32_t i = 0; i < 36; i++) {
 			((uint32_t*)(pkt + 68))[i] = MEM4(SFC_BASE + i * 4);
@@ -172,7 +130,7 @@ static int read_flash(uint8_t *pkt) {
 			sfc_setup();
 			sfc_done = 1;
 		}
-		sfc_read_bytes(addr, pkt + 4, size);
+		brom_sfc_read(addr, pkt + 4, size);
 	}
 	dl_send_packet(pkt);
 	return 0;
