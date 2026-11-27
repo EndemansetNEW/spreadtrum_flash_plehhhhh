@@ -88,7 +88,7 @@ static int set_baudrate(uint8_t *pkt) {
 #define SFC_BASE 0x20300000
 
 static void sfc_setup(void) {
-	((void (*)(void))0xffff53af)();
+	((void (*)(void))0xffff53b5)();
 }
 
 static void sfc_exec(void) {
