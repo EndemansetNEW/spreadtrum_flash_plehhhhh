@@ -88,8 +88,8 @@ static int set_baudrate(uint8_t *pkt) {
 #define SFC_BASE 0x20300000
 
 static void sfc_setup(void) {
-	/* Unlock AP_AHB_EB via SET register 0x20e03000 + direct 0x20e00000 */
-	MEM4(0x20e03000) = 0xFFFFFFFFu;
+	/* Unlock AP_AHB_EB via SET register 0x20e01000 + direct 0x20e00000 */
+	MEM4(0x20e01000) = 0xFFFFFFFFu;
 	MEM4(0x20e00000) |= 0xFFFFFFFFu;
 	MEM4(0x20e00004) = 0;
 
