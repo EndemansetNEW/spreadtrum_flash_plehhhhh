@@ -87,8 +87,9 @@ static int set_baudrate(uint8_t *pkt) {
 
 typedef int (*brom_sfc_read_t)(uint32_t cmd_type, uint32_t addr, uint32_t len, void *dst);
 
-static void sfc_setup(void) {
+static int sfc_setup(void) {
 	((void (*)(void))0xffff53b5)();
+	return ((int (*)(void))0xffff55f7)();
 }
 
 static int read_flash(uint8_t *pkt) {
@@ -110,17 +111,16 @@ static int read_flash(uint8_t *pkt) {
 		memcpy(pkt + 4, (void*)addr, size);
 	} else if (addr == 0x7F000000) {
 		uint32_t *out = (uint32_t*)(pkt + 4);
-		uint8_t tmp[32];
+		uint8_t tmp;
 		memset(out, 0, size);
 		*out++ = 0x11111111;
-		sfc_setup();
+		*out++ = (uint32_t)sfc_setup();
 		memset(tmp, 0xAA, sizeof(tmp));
 		*out++ = (uint32_t)brom_read(0, 0, 0, tmp);
 		*out++ = *(uint32_t*)tmp;
 		memset(tmp, 0x55, sizeof(tmp));
-		*out++ = (uint32_t)brom_read(3, 0, 32, tmp);
+		*out++ = (uint32_t)brom_read(1, 0, 32, tmp);
 		memcpy(pkt + 32, tmp, 32);
-		*out++ = 0x66666666;
 		for (uint32_t i = 0; i < 36; i++) {
 			((uint32_t*)(pkt + 68))[i] = MEM4(0x20300000 + i * 4);
 		}
@@ -130,7 +130,7 @@ static int read_flash(uint8_t *pkt) {
 			sfc_setup();
 			sfc_done = 1;
 		}
-		brom_read(3, addr, size, pkt + 4);
+		brom_read(1, addr, size, pkt + 4);
 	}
 	dl_send_packet(pkt);
 	return 0;
