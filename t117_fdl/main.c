@@ -111,7 +111,7 @@ static int read_flash(uint8_t *pkt) {
 		memcpy(pkt + 4, (void*)addr, size);
 	} else if (addr == 0x7F000000) {
 		uint32_t *out = (uint32_t*)(pkt + 4);
-		uint8_t tmp;
+		uint8_t tmp[32];
 		memset(out, 0, size);
 		*out++ = 0x11111111;
 		*out++ = (uint32_t)sfc_setup();
